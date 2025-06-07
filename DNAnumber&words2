@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNA 配對解碼遊戲</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #87CEEB, #B0E0E6, #ADD8E6);
+      background-size: 400% 400%;
+      animation: gradientBG 10s ease infinite;
+      margin: 20px auto;
+      padding: 20px;
+      max-width: 600px;
+      text-align: center;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      color: #333;
+      position: relative;
+    }
+
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    input, button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .output {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: rgba(255, 255, 255, 0.8);
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 90%;
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #f2f2f2;
+    }
+
+    .header-image {
+      width: 95%;
+      height: auto;
+      object-fit: contain;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* 煙火效果樣式 */
+    .fireworks-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .firework {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      animation: firework-burst 2s ease-out forwards;
+    }
+
+    @keyframes firework-burst {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      20% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(3);
+        opacity: 0;
+      }
+    }
+
+    .spark {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      animation: spark-fly 1.5s ease-out forwards;
+    }
+
+    @keyframes spark-fly {
+      0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: var(--spark-direction) scale(0);
+        opacity: 0;
+      }
+    }
+
+
+  </style>
+</head>
+<body>
+  <h1>DNA 配對解碼遊戲</h1>
+
+  <div id="step1">
+    <p>步驟 1：以下是特定設計的 DNA 單鏈：</p>
+    <div class="output" id="generatedDNA"></div>
+    <p>請輸入對應的互補鏈：</p>
+    <input type="text" id="complementaryInput" placeholder="輸入互補鏈" maxlength="40" style="width: 450px;">
+    <button onclick="checkComplementary()">提交</button>
+    <div class="output hidden" id="complementaryFeedback"></div>
+  </div>
+
+  <div id="step2" class="hidden">
+    <div style="position: relative;">
+      <button onclick="goBackToStep1()" style="position: absolute; left: 0; top: 0; background-color: #007BFF;">← 返回步驟1</button>
+    </div>
+    <h2>步驟 2：解碼挑戰</h2>
+    <p>以下是你們剛剛解出的互補鏈序列：</p>
+    <div class="output" id="complementaryDisplay"></div>
+    <p>請使用<strong>密碼表</strong>將互補鏈解碼！</p>
+    <input type="text" id="decodedMessageInput" placeholder="輸入解碼訊息">
+    <button onclick="checkDecodedMessage()">提交</button>
+    <div class="output hidden" id="decodedFeedback"></div>
+  </div>
+
+  <script>
+    // 密碼表，用於將三聯體解碼成字母和數字
+    const cipherTable = {
+      "AAA": "0", "AAC": "1", "AAG": "2", "AAT": "3",
+      "ACA": "4", "ACC": "5", "ACG": "6", "ACT": "7",
+      "AGA": "8", "AGC": "9", "AGG": "A", "AGT": "B",
+      "ATA": "C", "ATC": "D", "ATG": "E", "ATT": "F",
+      "CAA": "G", "CAC": "H", "CAG": "I", "CAT": "J",
+      "CCA": "K", "CCC": "L", "CCG": "M", "CCT": "N",
+      "CGA": "O", "CGC": "P", "CGG": "Q", "CGT": "R",
+      "CTA": "S", "CTC": "T", "CTG": "U", "CTT": "V",
+      "GAA": "W", "GAC": "X", "GAG": "Y", "GAT": "Z",
+      "GCA": "1", "GCC": "2", "GCG": "3", "GCT": "4",
+      "GGA": "5", "GGC": "6", "GGG": "7", "GGT": "8",
+      "GTA": "9", "GTC": "0", "GTG": "A", "GTT": "B",
+      "TAA": "C", "TAC": "D", "TAG": "E", "TAT": "F",
+      "TCA": "G", "TCC": "H", "TCG": "I", "TCT": "J",
+      "TGA": "K", "TGC": "L", "TGG": "M", "TGT": "N",
+      "TTA": "O", "TTC": "P", "TTG": "Q", "TTT": "R"
+    };
+
+    let dnaStrand = "";
+    let complementaryStrand = "";
+    
+    // Target messages to decode
+    const targetMessages = [
+      'EIGHTYNINE89',
+      'NINETYFIVE95', 
+      'SIXTYEIGHT68',
+      'SEVENTYSIX76'
+    ];
+
+    // 生成隨機 DNA 單鏈
+    function generateRandomDNA(length) {
+      const bases = ["A", "T", "C", "G"];
+      let strand = "";
+      for (let i = 0; i < length; i++) {
+        strand += bases[Math.floor(Math.random() * bases.length)];
+      }
+      return strand;
+    }
+
+    // 生成互補 DNA 鏈
+    function generateComplementaryStrand(dna) {
+      let complementary = "";
+      for (let base of dna) {
+        switch (base) {
+          case "A": complementary += "T"; break;
+          case "T": complementary += "A"; break;
+          case "C": complementary += "G"; break;
+          case "G": complementary += "C"; break;
+          default: return null; // 無效字符
+        }
+      }
+      return complementary;
+    }
+
+    // 顯示密碼表
+    function displayCipherTable() {
+      const tableBody = document.getElementById("cipherTable");
+      tableBody.innerHTML = ""; // 清空表格
+      const triplets = Object.keys(cipherTable);
+      for (let i = 0; i < triplets.length; i += 2) {
+        const row = document.createElement("tr");
+        // 左邊三聯體和字符
+        const cell1 = document.createElement("td");
+        const cell2 = document.createElement("td");
+        cell1.textContent = triplets[i];
+        cell2.textContent = cipherTable[triplets[i]];
+        row.appendChild(cell1);
+        row.appendChild(cell2);
+        // 右邊三聯體和字符
+        if (triplets[i + 1]) {
+          const cell3 = document.createElement("td");
+          const cell4 = document.createElement("td");
+          cell3.textContent = triplets[i + 1];
+          cell4.textContent = cipherTable[triplets[i + 1]];
+          row.appendChild(cell3);
+          row.appendChild(cell4);
+        }
+        tableBody.appendChild(row);
+      }
+    }
+
+    // 格式化 DNA 序列，每三個鹼基加一個空格
+    function formatDNASequence(sequence) {
+      let formatted = "";
+      for (let i = 0; i < sequence.length; i += 3) {
+        if (i > 0) formatted += " ";
+        formatted += sequence.substring(i, i + 3);
+      }
+      return formatted;
+    }
+
+    // 步驟 1：檢查互補鏈是否正確
+    function checkComplementary() {
+      const userComplementary = document.getElementById("complementaryInput").value.toUpperCase();
+      if (userComplementary === complementaryStrand) {
+        // 隱藏步驟 1，顯示步驟 2
+        document.getElementById("step1").classList.add("hidden");
+        document.getElementById("step2").classList.remove("hidden");
+        document.getElementById("complementaryDisplay").textContent = formatDNASequence(complementaryStrand);
+      } else {
+        document.getElementById("complementaryFeedback").textContent = "互補鏈錯誤，請再試一次！";
+        document.getElementById("complementaryFeedback").classList.remove("hidden");
+      }
+    }
+
+    // Create reverse cipher table for encoding
+    const reverseCipherTable = {};
+    for (let triplet in cipherTable) {
+      reverseCipherTable[cipherTable[triplet]] = triplet;
+    }
+
+    // Generate DNA sequence for a specific target message
+    function generateDNAForMessage(message) {
+      // Convert message to complementary strand using reverse cipher table
+      let targetComplementary = "";
+      for (let char of message) {
+        if (reverseCipherTable[char]) {
+          targetComplementary += reverseCipherTable[char];
+        }
+      }
+      
+      // Generate original DNA strand as complement of the complementary strand
+      let originalDNA = "";
+      for (let base of targetComplementary) {
+        switch (base) {
+          case "A": originalDNA += "T"; break;
+          case "T": originalDNA += "A"; break;
+          case "C": originalDNA += "G"; break;
+          case "G": originalDNA += "C"; break;
+        }
+      }
+      
+      return { originalDNA, targetComplementary };
+    }
+
+    // 初始化遊戲
+    function initializeGame() {
+      // Randomly select one message from the array
+      const randomIndex = Math.floor(Math.random() * targetMessages.length);
+      const targetMessage = targetMessages[randomIndex];
+      const { originalDNA, targetComplementary } = generateDNAForMessage(targetMessage);
+      
+      dnaStrand = originalDNA;
+      complementaryStrand = targetComplementary;
+      document.getElementById("generatedDNA").textContent = dnaStrand;
+    }
+
+    // 返回步驟 1
+    function goBackToStep1() {
+      document.getElementById("step2").classList.add("hidden");
+      document.getElementById("step1").classList.remove("hidden");
+    }
+
+    // 步驟 2：檢查解碼訊息是否正確
+    function checkDecodedMessage() {
+      const userMessage = document.getElementById("decodedMessageInput").value.toUpperCase();
+      const correctMessage = decodeComplementaryStrand(complementaryStrand);
+      
+      if (userMessage === correctMessage) {
+        document.getElementById("decodedFeedback").textContent = "恭喜！解碼成功！正確答案是：" + correctMessage + "。你可以前往下一個挑戰！";
+        document.getElementById("decodedFeedback").classList.remove("hidden");
+        
+        // 觸發煙火慶祝
+        launchFireworks();
+      } else {
+        document.getElementById("decodedFeedback").textContent = "加油! 你可以再試一次。";
+        document.getElementById("decodedFeedback").classList.remove("hidden");
+      }
+    }
+
+    // 煙火慶祝函數
+    function launchFireworks() {
+      // 創建煙火容器
+      const container = document.createElement('div');
+      container.className = 'fireworks-container';
+      document.body.appendChild(container);
+
+      // 發射多個煙火
+      for (let i = 0; i < 9; i++) {
+        setTimeout(() => {
+          createFirework(container);
+        }, i * 350);
+      }
+
+      // 5秒後移除煙火容器
+      setTimeout(() => {
+        if (container.parentNode) {
+          container.parentNode.removeChild(container);
+        }
+      }, 5000);
+    }
+
+    // 創建單個煙火
+    function createFirework(container) {
+      const colors = ['#ff0000', '#ff8800', '#ffff00', '#00ff00', '#0088ff', '#8800ff', '#ff00ff'];
+      const x = Math.random() * window.innerWidth;
+      const y = Math.random() * (window.innerHeight * 0.6) + (window.innerHeight * 0.1);
+      
+      // 主煙火爆炸點
+      const firework = document.createElement('div');
+      firework.className = 'firework';
+      firework.style.left = x + 'px';
+      firework.style.top = y + 'px';
+      firework.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      container.appendChild(firework);
+
+      // 創建火花
+      for (let i = 0; i < 12; i++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        spark.style.left = x + 'px';
+        spark.style.top = y + 'px';
+        spark.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        // 隨機方向
+        const angle = (i / 12) * 2 * Math.PI;
+        const distance = 80 + Math.random() * 40;
+        const sparkX = Math.cos(angle) * distance;
+        const sparkY = Math.sin(angle) * distance;
+        
+        spark.style.setProperty('--spark-direction', `translate(${sparkX}px, ${sparkY}px)`);
+        container.appendChild(spark);
+      }
+
+      // 移除元素
+      setTimeout(() => {
+        if (firework.parentNode) {
+          firework.parentNode.removeChild(firework);
+        }
+      }, 2000);
+    }
+
+    // 解碼互補鏈序列
+    function decodeComplementaryStrand(strand) {
+      let decoded = "";
+      for (let i = 0; i < strand.length; i += 3) {
+        const triplet = strand.substring(i, i + 3);
+        if (triplet.length === 3 && cipherTable[triplet]) {
+          decoded += cipherTable[triplet];
+        }
+      }
+      return decoded;
+    }
+
+    // 啟動遊戲
+    initializeGame();
+  </script>
+
+  <img src="https://pfst.cf2.poecdn.net/base/image/fc8bc709ef733cdaab901e61a444cb10710561d5984c847bf9030d929c9c4294?w=550&h=300" 
+       alt="Life is Spelled - DNA Bases" 
+       class="header-image">
+</body>
+</html>
